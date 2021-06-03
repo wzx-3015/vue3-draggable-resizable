@@ -13,6 +13,7 @@ import {
   ReferenceLineMap,
   ResizingHandle
 } from './types'
+import { snapToGrid } from './fn'
 
 type HandleEvent = MouseEvent | TouchEvent
 
@@ -88,6 +89,7 @@ export function initState(props: any, emit: any) {
     resizingMinWidth,
     resizingMinHeight,
     aspectRatio,
+    scale: props.scale,
     setEnable,
     setDragging,
     setResizing,
@@ -96,10 +98,10 @@ export function initState(props: any, emit: any) {
     setResizingMaxWidth,
     setResizingMinWidth,
     setResizingMinHeight,
-    $setWidth: (val: number) => setWidth(Math.floor(val)),
-    $setHeight: (val: number) => setHeight(Math.floor(val)),
-    $setTop: (val: number) => setTop(Math.floor(val)),
-    $setLeft: (val: number) => setLeft(Math.floor(val))
+    setWidth: (val: number) => setWidth(Math.floor(val)),
+    setHeight: (val: number) => setHeight(Math.floor(val)),
+    setTop: (val: number) => setTop(Math.floor(val)),
+    setLeft: (val: number) => setLeft(Math.floor(val))
   }
 }
 
@@ -134,7 +136,7 @@ export function initLimitSizeAndMethods(
     resizingMinWidth,
     resizingMinHeight
   } = containerProps
-  const { $setWidth, $setHeight, $setTop, $setLeft } = containerProps
+  const { setWidth, setHeight, setTop, setLeft } = containerProps
   const { parentWidth, parentHeight } = parentSize
   const limitProps = {
     minWidth: computed(() => {
@@ -175,7 +177,7 @@ export function initLimitSizeAndMethods(
       if (props.disabledW) {
         return width.value
       }
-      return $setWidth(
+      return setWidth(
         Math.min(
           limitProps.maxWidth.value,
           Math.max(limitProps.minWidth.value, val)
@@ -186,7 +188,7 @@ export function initLimitSizeAndMethods(
       if (props.disabledH) {
         return height.value
       }
-      return $setHeight(
+      return setHeight(
         Math.min(
           limitProps.maxHeight.value,
           Math.max(limitProps.minHeight.value, val)
@@ -197,7 +199,7 @@ export function initLimitSizeAndMethods(
       if (props.disabledY) {
         return top.value
       }
-      return $setTop(
+      return setTop(
         Math.min(
           limitProps.maxTop.value,
           Math.max(limitProps.minTop.value, val)
@@ -208,7 +210,7 @@ export function initLimitSizeAndMethods(
       if (props.disabledX) {
         return left.value
       }
-      return $setLeft(
+      return setLeft(
         Math.min(
           limitProps.maxLeft.value,
           Math.max(limitProps.minLeft.value, val)
@@ -243,7 +245,7 @@ export function initDraggableContainer(
   containerProvider: ContainerProvider | null,
   parentSize: ReturnType<typeof initParent>
 ) {
-  const { left: x, top: y, width: w, height: h, dragging, id } = containerProps
+  const { left: x, top: y, width: w, height: h, dragging, id, scale } = containerProps
   const {
     setDragging,
     setEnable,
@@ -289,8 +291,9 @@ export function initDraggableContainer(
     const [pageX, pageY] = getPosition(e)
     const deltaX = pageX - lstPageX
     const deltaY = pageY - lstPageY
-    let newLeft = lstX + deltaX
-    let newTop = lstY + deltaY
+    const [dataX, dataY] = snapToGrid(lstX + deltaX, lstY + deltaY, scale)
+    let newLeft = dataX
+    let newTop = dataY
     if (referenceLineMap !== null) {
       const widgetSelfLine = {
         col: [newLeft, newLeft + w.value / 2, newLeft + w.value],
@@ -339,14 +342,15 @@ export function initDraggableContainer(
           .filter((i) => i !== null)
       }
       containerProvider!.setMatchedLine(matchedLine as MatchedLine)
+
     }
     emit('dragging', { x: setLeft(newLeft), y: setTop(newTop) })
   }
   const handleDown = (e: HandleEvent) => {
     if (!draggable.value) return
     setDragging(true)
-    lstX = x.value
-    lstY = y.value
+    lstX = Math.round(x.value * scale)
+    lstY = Math.round(y.value * scale)
     lstPageX = getPosition(e)[0]
     lstPageY = getPosition(e)[1]
     // document.documentElement.addEventListener('mousemove', handleDrag)
@@ -370,8 +374,8 @@ export function initDraggableContainer(
   onMounted(() => {
     const el = containerRef.value
     if (!el) return
-    el.style.left = x + 'px'
-    el.style.top = y + 'px'
+    el.style.left = x.value + 'px'
+    el.style.top = y.value + 'px'
     // document.documentElement.addEventListener('mousedown', _unselect)
     // el.addEventListener('mousedown', handleDown)
     addEvent(documentElement, DOWN_HANDLES, _unselect)
@@ -397,7 +401,7 @@ export function initResizeHandle(
   emit: any
 ) {
   const { setWidth, setHeight, setLeft, setTop } = limitProps
-  const { width, height, left, top, aspectRatio } = containerProps
+  const { width, height, left, top, aspectRatio, scale } = containerProps
   const {
     setResizing,
     setResizingHandle,
@@ -439,17 +443,23 @@ export function initResizeHandle(
         }
       }
     }
+
+    const sW = Math.round(width.value * scale)
+    const sH = Math.round(height.value * scale)
+
+    const [dataX, dataY] = snapToGrid(lstX - (sW - lstW), lstY - (sH - lstH), scale)
+    const [dataW, dataH] = snapToGrid(lstW - deltaX, lstH - deltaY, scale)
     if (idx0 === 't') {
-      setHeight(lstH - deltaY)
-      setTop(lstY - (height.value - lstH))
+      setHeight(dataH)
+      setTop(dataY)
     } else if (idx0 === 'b') {
-      setHeight(lstH + deltaY)
+      setHeight(Math.round((lstH + deltaY) / scale))
     }
     if (idx1 === 'l') {
-      setWidth(lstW - deltaX)
-      setLeft(lstX - (width.value - lstW))
+      setWidth(dataW)
+      setLeft(dataX)
     } else if (idx1 === 'r') {
-      setWidth(lstW + deltaX)
+      setWidth(Math.round((lstW + deltaX) / scale))
     }
     emit('resizing', {
       x: left.value,
@@ -483,7 +493,7 @@ export function initResizeHandle(
     setResizing(true)
     idx0 = handleType[0]
     idx1 = handleType[1]
-    if (aspectRatio.value) {
+    if (props.lockAspectRatio && aspectRatio.value) {
       if (['tl', 'tm', 'ml', 'bl'].includes(handleType)) {
         idx0 = 't'
         idx1 = 'l'
@@ -516,10 +526,10 @@ export function initResizeHandle(
       setResizingMaxHeight(maxHeight)
       setResizingMaxWidth(maxWidth)
     }
-    lstW = width.value
-    lstH = height.value
-    lstX = left.value
-    lstY = top.value
+    lstW = Math.round(width.value * scale)
+    lstH = Math.round(height.value * scale)
+    lstX = Math.round(left.value * scale)
+    lstY = Math.round(top.value * scale)
     const lstPagePosition = getPosition(e)
     lstPageX = lstPagePosition[0]
     lstPageY = lstPagePosition[1]

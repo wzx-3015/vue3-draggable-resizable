@@ -1,3 +1,10 @@
+/*
+ * @Description: 请输入当前文件描述
+ * @Author: @Xin (834529118@qq.com)
+ * @Date: 2021-06-03 16:32:59
+ * @LastEditTime: 2021-06-03 16:45:16
+ * @LastEditors: @Xin (834529118@qq.com)
+ */
 import {
   ContainerProvider,
   ParentSize,
@@ -88,5 +95,6 @@ export function getReferenceLineMap(
       return { ...pre, [cur]: { min: cur - 5, max: cur + 5, value: cur } }
     }, {})
   }
+  console.log('referenceLineMap', referenceLineMap)
   return referenceLineMap
 }

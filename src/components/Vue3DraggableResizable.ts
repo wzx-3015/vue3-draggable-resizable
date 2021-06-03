@@ -1,3 +1,10 @@
+/*
+ * @Description: 请输入当前文件描述
+ * @Author: @Xin (834529118@qq.com)
+ * @Date: 2021-06-03 16:32:59
+ * @LastEditTime: 2021-06-03 16:39:41
+ * @LastEditors: @Xin (834529118@qq.com)
+ */
 import { defineComponent, ref, toRef, h, Ref, inject } from 'vue'
 import {
   initDraggableContainer,
@@ -127,6 +134,10 @@ const VdrProps = {
   lockAspectRatio: {
     type: Boolean,
     default: false
+  },
+  scale: {
+    type: Number,
+    default: 1,
   }
 }
 
